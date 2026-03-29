@@ -1,0 +1,68 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: service-registry
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://config-server:8888}"
+  cloud:
+    compatibility-verifier:
+      enabled: false
+    config:
+      enabled: true
+      uri: ${CONFIG_SERVER_URL:http://config-server:8888}
+      fail-fast: false
+      retry:
+        max-attempts: 6
+        max-interval: 2000
+        initial-interval: 1000
+        multiplier: 1.5
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+
+eureka:
+  instance:
+    hostname: service-registry
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+  server:
+    enable-self-preservation: true
+    eviction-interval-timer-in-ms: 10000
+    renewal-percent-threshold: 0.85
+    renewal-threshold-update-interval-ms: 900000
+    wait-time-in-ms-when-sync-empty: 0
+    response-cache-update-interval-ms: 30000
+    peer-eureka-nodes-update-interval-ms: 60000
+    registry-sync-retries: 5
+    registry-sync-retry-wait-ms: 30000
+    use-read-only-response-cache: true
+    read-only-response-cache-update-interval-ms: 15000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+    org.springframework.cloud: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

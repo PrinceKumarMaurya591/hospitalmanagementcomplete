@@ -1,0 +1,106 @@
+# Prometheus configuration for Hospital Management System
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'hospital-monitor'
+
+# Alert manager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+# Rule files
+rule_files:
+  - "alert_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 10s
+
+  # Spring Boot Applications (Micrometer metrics)
+  - job_name: 'spring-boot-apps'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+        - 'api-gateway:8080'
+        - 'user-service:8081'
+        - 'patient-service:8082'
+        - 'doctor-service:8083'
+        - 'appointment-service:8084'
+        - 'billing-service:8085'
+        - 'notification-service:8086'
+        - 'service-registry:8761'
+        - 'config-server:8888'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}'
+
+  # Node Exporter (System metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  # Kafka Exporter
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+    scrape_interval: 30s
+
+  # Docker Daemon
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['docker-daemon:9323']
+    scrape_interval: 30s
+
+  # Blackbox Exporter (HTTP probes)
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - 'http://api-gateway:8080/actuator/health'
+        - 'http://service-registry:8761/'
+        - 'http://frontend:3000/'
+        - 'http://grafana:3001/'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'blackbox-exporter:9115'
+
+# Service discovery (optional - for dynamic environments)
+# - job_name: 'consul-services'
+#   consul_sd_configs:
+#     - server: 'consul:8500'
+#       services: []
+#   relabel_configs:
+#     - source_labels: [__meta_consul_service]
+#       target_label: job
+#     - source_labels: [__meta_consul_tags]
+#       regex: '.*,metrics,.*'
+#       action: keep

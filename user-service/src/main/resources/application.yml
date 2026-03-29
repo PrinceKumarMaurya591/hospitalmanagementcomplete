@@ -1,0 +1,188 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /user-service
+
+spring:
+  application:
+    name: user-service
+  config:
+    import: "optional:configserver:http://config-server:8888"
+  cloud:
+    config:
+      uri: http://config-server:8888
+      fail-fast: false
+      retry:
+        max-attempts: 6
+        max-interval: 2000
+        initial-interval: 1000
+        multiplier: 1.5
+      username: admin
+      password: admin123
+    compatibility-verifier:
+      enabled: false
+  
+  datasource:
+    url: jdbc:postgresql://user-db:5432/user_db
+    username: hospital
+    password: ${POSTGRES_PASSWORD:StrongPassword123!}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+    show-sql: false
+  
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+  
+  kafka:
+    bootstrap-servers: kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        acks: all
+        retries: 3
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        compression.type: snappy
+        linger.ms: 5
+        batch.size: 32768
+  
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME:}
+    password: ${EMAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+  
+  redis:
+    host: redis
+    port: 6379
+    password: ${REDIS_PASSWORD:RedisPassword123!}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+  
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000
+      cache-null-values: false
+  
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/user-service
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:your-256-bit-secret-key-for-jwt-signing-must-be-at-least-32-chars}
+    validity: 86400000 # 24 hours in milliseconds
+    refresh-validity: 604800000 # 7 days in milliseconds
+
+kafka:
+  topics:
+    user-registered: user-registered
+    user-updated: user-updated
+    user-deleted: user-deleted
+    user-login: user-login
+    user-logout: user-logout
+    partitions: 3
+    replication-factor: 1
+
+app:
+  frontend:
+    url: http://localhost:3000
+  email:
+    verification-enabled: true
+    from-address: no-reply@hospital.com
+  security:
+    max-login-attempts: 5
+    account-lock-duration-minutes: 30
+    verification-token-expiry-hours: 24
+    reset-token-expiry-hours: 24
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+logging:
+  level:
+    com.hospital.userservice: DEBUG
+    org.springframework.security: INFO
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/user-service.log
+    max-size: 10MB
+    max-history: 30
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://service-registry:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+    username: admin
+    password: admin123
+  instance:
+    hostname: user-service
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  packages-to-scan: com.hospital.userservice.controller
+  paths-to-match: /api/**
